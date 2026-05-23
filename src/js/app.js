@@ -949,26 +949,26 @@ function bindEvents() {
       return;
     }
     if (btn.id === 'btn-proceed-payment') {
-      state.checkoutPin = '';
-      updatePinDisplay();
-      transitionPaywallStage('keypad');
-      return;
-    }
-    if (btn.classList.contains('keypad-btn')) {
-      const val = btn.textContent.trim();
-      if (val === '' || val === 'delete' || btn.id === 'btn-keypad-back') return;
-      if (state.checkoutPin.length < 6) {
-        state.checkoutPin += val;
-        updatePinDisplay();
-        if (state.checkoutPin.length === 6) simulateCheckoutSuccess();
+      if (!state.currentUser) {
+        showToast('결제를 진행하려면 먼저 로그인해 주세요.', 'error');
+        document.getElementById('auth-modal-overlay').classList.add('active');
+        return;
       }
-      return;
-    }
-    if (btn.id === 'btn-keypad-back') {
-      if (state.checkoutPin.length > 0) {
-        state.checkoutPin = state.checkoutPin.slice(0, -1);
-        updatePinDisplay();
-      }
+      
+      const tossPayments = window.TossPayments('test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq');
+      const orderId = 'GV_' + new Date().getTime();
+      
+      tossPayments.requestPayment('카드', {
+        amount: 5900,
+        orderId: orderId,
+        orderName: 'GridVibe Solo Creator PRO (1개월)',
+        customerName: state.currentUser.email,
+        successUrl: window.location.origin + window.location.pathname + '?toss=success&uid=' + state.currentUser.uid,
+        failUrl: window.location.origin + window.location.pathname + '?toss=fail'
+      }).catch(err => {
+        if (err.code === 'USER_CANCEL') showToast('결제가 취소되었습니다.', 'info');
+        else showToast('결제창 호출 오류: ' + err.message, 'error');
+      });
       return;
     }
     if (btn.id === 'btn-success-confirm') {
@@ -2752,6 +2752,44 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   bindEvents();
   setupLayoutControls();
+
+  // Toss Payments Redirect Handling
+  const urlParams = new URLSearchParams(window.location.search);
+  const tossStatus = urlParams.get('toss');
+  if (tossStatus === 'success') {
+    const paymentKey = urlParams.get('paymentKey');
+    const orderId = urlParams.get('orderId');
+    const amount = urlParams.get('amount');
+    const uid = urlParams.get('uid');
+    
+    showLoader();
+    const loadingMsg = document.getElementById('loading-message');
+    if (loadingMsg) loadingMsg.textContent = '결제 승인 중입니다. 잠시만 기다려주세요...';
+    
+    fetch('https://us-central1-gridvibe-537aa.cloudfunctions.net/verifyTossPayment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentKey, orderId, amount, uid })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('결제가 완벽하게 처리되었습니다. PRO 멤버십을 환영합니다!');
+        window.location.href = window.location.origin + window.location.pathname; // Clean URL
+      } else {
+        alert('결제 승인 실패: ' + data.error);
+        hideLoader();
+      }
+    })
+    .catch(err => {
+      alert('네트워크 오류가 발생했습니다.');
+      hideLoader();
+    });
+    return; // Stop further execution until redirect
+  } else if (tossStatus === 'fail') {
+    alert('결제 중 오류가 발생했습니다.');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
   
   // Firebase Auth State Listener
   auth.onAuthStateChanged(async (user) => {
