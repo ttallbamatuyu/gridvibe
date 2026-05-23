@@ -892,7 +892,7 @@ function bindEvents() {
       const plan = btn.getAttribute('data-plan');
       state.selectedPlan = plan;
       const priceDisp = document.getElementById('checkout-price-display');
-      if (priceDisp) priceDisp.textContent = plan === 'PRO' ? '19,000원 / 월' : '49,000원 / 월';
+      if (priceDisp) priceDisp.textContent = '5,900원 / 월';
       transitionPaywallStage('method');
       return;
     }
