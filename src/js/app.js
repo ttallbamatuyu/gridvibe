@@ -930,6 +930,12 @@ function bindEvents() {
     if (btn.id === 'btn-success-confirm') {
       closePaywallModal();
       state.isPro = true;
+      
+      // Silently save config to persist the PRO state across reloads
+      const existingConfig = JSON.parse(localStorage.getItem('gridvibe_config') || '{}');
+      existingConfig.isPro = true;
+      localStorage.setItem('gridvibe_config', JSON.stringify(existingConfig));
+      
       const expBadge = document.getElementById('export-lock-badge');
       if (expBadge) expBadge.classList.add('hidden');
       const headerSubBtn = document.getElementById('btn-subscribe-header');
