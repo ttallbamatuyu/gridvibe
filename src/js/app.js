@@ -530,25 +530,23 @@ function renderDonutChartLegacy(labels, values, tokens, yLabel) {
     donutCanvas.destroy();
   }
 
-  const maxSlices = 5;
-  const sliceLabels = labels.slice(0, maxSlices);
-  const sliceValues = values.slice(0, maxSlices);
-
-  if (labels.length > maxSlices) {
-    const otherSum = values.slice(maxSlices).reduce((a, b) => a + b, 0);
-    sliceLabels.push('기타');
-    sliceValues.push(otherSum);
-  }
+  const sliceLabels = labels;
+  const sliceValues = values;
 
   const ctx = canvas.getContext('2d');
-  const colorPalette = [
+  const basePalette = [
     tokens.primary,
     tokens.secondary,
     '#3b82f6',
     '#f59e0b',
     '#10b981',
-    '#6b7280'
+    '#8b5cf6',
+    '#ec4899',
+    '#14b8a6',
+    '#f43f5e',
+    '#84cc16'
   ];
+  const colorPalette = labels.map((_, i) => basePalette[i % basePalette.length]);
 
   activeCharts.donut = new window.Chart(ctx, {
     type: 'doughnut',

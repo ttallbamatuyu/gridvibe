@@ -151,29 +151,24 @@ function renderDonutChart(labels, values, tokens) {
     activeCharts.donut.destroy();
   }
 
-  // Segment to maximum top 5 rows to ensure visualization readability
-  const maxSlices = 5;
-  const sliceLabels = labels.slice(0, maxSlices);
-  const sliceValues = values.slice(0, maxSlices);
-
-  // If there are more items, aggregate them as '기타'
-  if (labels.length > maxSlices) {
-    const otherSum = values.slice(maxSlices).reduce((a, b) => a + b, 0);
-    sliceLabels.push('기타');
-    sliceValues.push(otherSum);
-  }
+  const sliceLabels = labels;
+  const sliceValues = values;
 
   const ctx = canvas.getContext('2d');
   
-  // Custom futuristic color array matching dashboard style
-  const colorPalette = [
+  const basePalette = [
     tokens.primary,
     tokens.secondary,
-    '#3b82f6', // Premium bright blue
-    '#f59e0b', // Accent amber
-    '#10b981', // Success emerald
-    '#6b7280'  // Slate gray for "Other"
+    '#3b82f6',
+    '#f59e0b',
+    '#10b981',
+    '#8b5cf6',
+    '#ec4899',
+    '#14b8a6',
+    '#f43f5e',
+    '#84cc16'
   ];
+  const colorPalette = labels.map((_, i) => basePalette[i % basePalette.length]);
 
   const config = {
     type: 'doughnut',
@@ -233,9 +228,8 @@ function renderBarChart(labels, values, tokens) {
     activeCharts.bar.destroy();
   }
 
-  const maxBars = 7;
-  const barLabels = labels.slice(0, maxBars);
-  const barValues = values.slice(0, maxBars);
+  const barLabels = labels;
+  const barValues = values;
 
   const ctx = canvas.getContext('2d');
 
