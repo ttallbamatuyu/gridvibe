@@ -10,6 +10,22 @@
  */
 
 // ==========================================================================
+// 0. FIREBASE INITIALIZATION
+// ==========================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCXaSRISv9dO7YPOVu5oPAUYIoAhFRLDNg",
+  authDomain: "gridvibe-537aa.firebaseapp.com",
+  projectId: "gridvibe-537aa",
+  storageBucket: "gridvibe-537aa.firebasestorage.app",
+  messagingSenderId: "218314165754",
+  appId: "1:218314165754:web:4bdd2537de2c9efbe22843",
+  measurementId: "G-FSF61N91SP"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ==========================================================================
 // 1. THEME MANAGER SECTION
 // ==========================================================================
 const THEMES = {
@@ -42,7 +58,8 @@ let state = {
   checkoutStage: 'plan',
   checkoutPin: '',
   selectedPlan: 'PRO',
-  activeFilter: null // Used for drill-down interactivity
+  activeFilter: null, // Used for drill-down interactivity
+  currentUser: null
 };
 
 // ==========================================================================
@@ -59,6 +76,7 @@ function saveStateToLocal() {
       state.chartsOrder = Array.from(chartsRow.children).map(c => c.id).filter(Boolean);
     }
     localStorage.setItem('gridvibe_state', JSON.stringify(state));
+    if (state.currentUser) saveToFirestore();
   }
 }
 
@@ -883,6 +901,32 @@ function bindEvents() {
       return;
     }
 
+    // Auth Modal Buttons
+    if (btn.id === 'btn-login-header') {
+      document.getElementById('auth-modal-overlay').classList.add('active');
+      return;
+    }
+    if (btn.id === 'btn-close-auth') {
+      document.getElementById('auth-modal-overlay').classList.remove('active');
+      return;
+    }
+    if (btn.id === 'btn-google-login') {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).then((result) => {
+        document.getElementById('auth-modal-overlay').classList.remove('active');
+        showToast('로그인 성공!', 'success');
+      }).catch((err) => {
+        showToast('로그인 실패: ' + err.message, 'error');
+      });
+      return;
+    }
+    if (btn.id === 'btn-logout') {
+      auth.signOut().then(() => {
+        showToast('로그아웃 되었습니다.', 'info');
+      });
+      return;
+    }
+
     // 4. Paywall Modal Buttons
     if (btn.id === 'btn-close-paywall') {
       closePaywallModal();
@@ -935,6 +979,7 @@ function bindEvents() {
       const existingConfig = JSON.parse(localStorage.getItem('gridvibe_config') || '{}');
       existingConfig.isPro = true;
       localStorage.setItem('gridvibe_config', JSON.stringify(existingConfig));
+      if (state.currentUser) saveToFirestore();
       
       const expBadge = document.getElementById('export-lock-badge');
       if (expBadge) expBadge.classList.add('hidden');
@@ -1567,8 +1612,9 @@ function saveConfig() {
     isPro: state.isPro
   };
 
-  localStorage.setItem('gridvibe-config', JSON.stringify(config));
-  showToast('대시보드 설정이 브라우저에 저장되었습니다!', 'success');
+  localStorage.setItem('gridvibe_config', JSON.stringify(config));
+  if (state.currentUser) saveToFirestore();
+  showToast('설정이 저장되었습니다.', 'success');
 }
 
 function loadConfig() {
@@ -2620,15 +2666,114 @@ function hideLoader() {
 }
 
 // ==========================================================================
+// FIREBASE FIRESTORE SYNC LOGIC
+// ==========================================================================
+async function saveToFirestore() {
+  if (!state.currentUser) return;
+  const dataToSave = {
+    config: {
+      title: state.title,
+      theme: state.theme,
+      dataSourceType: state.dataSourceType,
+      sheetUrl: state.sheetUrl,
+      mappings: state.mappings,
+      widgets: state.widgets,
+      chartType: state.chartType,
+      logoBase64: state.logoBase64,
+      isPro: state.isPro
+    },
+    appState: {
+      csvData: state.csvData || [],
+      widgetOrder: state.widgetOrder || [],
+      chartsOrder: state.chartsOrder || []
+    }
+  };
+  try {
+    await db.collection('users').doc(state.currentUser.uid).set(dataToSave, { merge: true });
+  } catch(e) {
+    console.error('Firestore save error:', e);
+  }
+}
+
+async function loadFromFirestore(uid) {
+  try {
+    const doc = await db.collection('users').doc(uid).get();
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.config) {
+        const config = data.config;
+        state.title = config.title || state.title;
+        state.theme = config.theme || state.theme;
+        state.dataSourceType = config.dataSourceType || state.dataSourceType;
+        state.sheetUrl = config.sheetUrl || state.sheetUrl;
+        state.mappings = config.mappings || state.mappings;
+        state.widgets = config.widgets || state.widgets;
+        state.chartType = config.chartType || state.chartType;
+        state.logoBase64 = config.logoBase64 || state.logoBase64;
+        state.isPro = config.isPro || state.isPro;
+
+        document.getElementById('dashboard-title-input').value = state.title;
+        document.getElementById('live-dashboard-title').textContent = state.title;
+        applyTheme(state.theme);
+
+        if (state.isPro) {
+          const expBadge = document.getElementById('export-lock-badge');
+          if (expBadge) expBadge.classList.add('hidden');
+          const headerSubBtn = document.getElementById('btn-subscribe-header');
+          if (headerSubBtn) {
+            headerSubBtn.innerHTML = `<i data-lucide="shield-check"></i> PRO 멤버십`;
+            headerSubBtn.style.background = 'var(--success-color)';
+            headerSubBtn.style.boxShadow = '0 0 12px var(--success-glow)';
+            if (window.lucide) window.lucide.createIcons();
+          }
+        }
+      }
+      if (data.appState && data.appState.csvData && data.appState.csvData.length > 0) {
+        state.csvData = data.appState.csvData;
+        state.widgetOrder = data.appState.widgetOrder || [];
+        state.chartsOrder = data.appState.chartsOrder || [];
+        
+        applyWidgetOrder();
+        applyChartsOrder();
+        processData();
+        triggerChartsRender();
+        renderDashboardTable();
+      }
+    }
+  } catch(e) {
+    console.error('Firestore load error:', e);
+  }
+}
+
+// ==========================================================================
 // 4. MAIN ENTRY POINT & LIFE-CYCLE INITIALIZATION
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   bindEvents();
-  loadConfig();
   setupLayoutControls();
   
-  if (!loadStateFromLocal()) {
-    // Do nothing. Show empty state per user request.
-  }
+  // Firebase Auth State Listener
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      state.currentUser = user;
+      document.getElementById('user-profile-display').classList.remove('hidden');
+      document.getElementById('btn-login-header').classList.add('hidden');
+      document.getElementById('user-email-text').textContent = user.email;
+      
+      showLoader();
+      await loadFromFirestore(user.uid);
+      hideLoader();
+    } else {
+      state.currentUser = null;
+      document.getElementById('user-profile-display').classList.add('hidden');
+      document.getElementById('btn-login-header').classList.remove('hidden');
+      
+      // Fallback to local storage
+      loadConfig();
+      if (!loadStateFromLocal()) {
+        // Empty state
+      }
+    }
+  });
 });
