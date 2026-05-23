@@ -1350,7 +1350,7 @@ function onMappingUpdate() {
     });
     
     processedData = Object.values(groups);
-    processedData.sort((a, b) => String(a[dateCol]).localeCompare(String(b[dateCol])));
+    processedData.sort((a, b) => String(a[dateCol]).localeCompare(String(b[dateCol]), undefined, { numeric: true }));
   }
   
   state.processedData = processedData;
