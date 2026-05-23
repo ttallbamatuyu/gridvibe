@@ -400,18 +400,19 @@ function renderDashboardChartsDirect(data, xCol, yCols, theme, tokens, chartType
     areaGradient.addColorStop(1, color + '00');
 
     // Build specific dataset structures depending on ChartType selector
+    const isPrimaryDS = idx === 0;
     const ds = {
       label: yCol,
       data: values,
       borderColor: color,
       backgroundColor: chartType === 'line' ? areaGradient : color,
-      borderWidth: 3,
-      fill: chartType === 'line',
+      borderWidth: isPrimaryDS ? 3 : 2,
+      fill: chartType === 'line' && isPrimaryDS, // Only fill the primary metric to prevent visual clutter
       tension: 0.38,
       pointBackgroundColor: color,
       pointBorderColor: '#ffffff',
-      pointRadius: 4,
-      pointHoverRadius: 7
+      pointRadius: isPrimaryDS ? 4 : 2,
+      pointHoverRadius: isPrimaryDS ? 7 : 5
     };
 
     if (chartType === 'bar' || chartType === 'horizontalBar') {
