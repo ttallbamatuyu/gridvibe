@@ -35,7 +35,8 @@ let state = {
     donutChart: true,
     table: true
   },
-  chartType: 'line',
+  mainChartType: 'line',
+  widgetOrder: [],
   logoBase64: '',
   isPro: false,
   checkoutStage: 'plan',
@@ -43,6 +44,75 @@ let state = {
   selectedPlan: 'PRO',
   activeFilter: null // Used for drill-down interactivity
 };
+
+// ==========================================================================
+// 1.5. LOCAL STORAGE SAVE & LOAD
+// ==========================================================================
+function saveStateToLocal() {
+  if (state.csvData && state.csvData.length > 0) {
+    const grid = document.getElementById('dashboard-active-content');
+    const chartsRow = document.getElementById('charts-row-container') || document.querySelector('.charts-row');
+    if (grid) {
+      state.widgetOrder = Array.from(grid.children).map(c => c.id || 'charts-row-container').filter(Boolean);
+    }
+    if (chartsRow) {
+      state.chartsOrder = Array.from(chartsRow.children).map(c => c.id).filter(Boolean);
+    }
+    localStorage.setItem('gridvibe_state', JSON.stringify(state));
+  }
+}
+
+function loadStateFromLocal() {
+  const saved = localStorage.getItem('gridvibe_state');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed.csvData && parsed.csvData.length > 0) {
+        state = { ...state, ...parsed };
+        
+        // Restore layout order
+        const grid = document.getElementById('dashboard-active-content');
+        if (grid && state.widgetOrder) {
+          state.widgetOrder.forEach(id => {
+            const el = id === 'charts-row-container' ? (document.getElementById('charts-row-container') || document.querySelector('.charts-row')) : document.getElementById(id);
+            if (el) grid.appendChild(el);
+          });
+        }
+        const chartsRow = document.getElementById('charts-row-container') || document.querySelector('.charts-row');
+        if (chartsRow && state.chartsOrder) {
+          state.chartsOrder.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) chartsRow.appendChild(el);
+          });
+        }
+        
+        // Restore chart tab UI
+        document.querySelectorAll('.chart-tab').forEach(btn => {
+          btn.classList.remove('active');
+          btn.style.background = 'transparent';
+          btn.style.color = 'var(--text-muted)';
+          btn.style.border = '1px solid var(--card-border)';
+          if (btn.dataset.type === state.mainChartType) {
+            btn.classList.add('active');
+            btn.style.background = 'var(--primary-color)';
+            btn.style.color = 'white';
+            btn.style.border = 'none';
+          }
+        });
+        
+        if (state.csvData && state.columns) {
+          document.getElementById('dashboard-empty-state').classList.add('hidden');
+          document.getElementById('dashboard-active-content').classList.remove('hidden');
+          onMappingUpdate();
+        }
+        return true;
+      }
+    } catch(e) {
+      console.error('Failed to parse state', e);
+    }
+  }
+  return false;
+}
 
 function initTheme() {
   const savedTheme = localStorage.getItem('gridvibe-theme');
@@ -642,12 +712,56 @@ function bindEvents() {
     });
   }
 
+  // Reset Data Button
+  const btnReset = document.getElementById('btn-reset-data');
+  if (btnReset) {
+    btnReset.addEventListener('click', () => {
+      if (confirm('대시보드를 초기 상태로 되돌리시겠습니까? 저장된 모든 데이터가 삭제됩니다.')) {
+        localStorage.removeItem('gridvibe_state');
+        location.reload();
+      }
+    });
+  }
+
+  // Chart Type Tabs
+  const chartTabs = document.querySelectorAll('.chart-tab');
+  chartTabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      chartTabs.forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--text-muted)';
+        btn.style.border = '1px solid var(--card-border)';
+      });
+      e.target.classList.add('active');
+      e.target.style.background = 'var(--primary-color)';
+      e.target.style.color = 'white';
+      e.target.style.border = 'none';
+      
+      state.mainChartType = e.target.dataset.type;
+      saveStateToLocal();
+      triggerChartsRender();
+    });
+  });
+
   // --- Global Event Delegation for Clicks (NEW UPGRADE) ---
   document.body.addEventListener('click', (e) => {
     const target = e.target;
     // Find closest interactive element
     const btn = target.closest('button') || target.closest('.btn-select-plan') || target.closest('.keypad-btn') || target.closest('.sample-btn') || target.closest('.pay-method-card') || target.closest('.ctrl-btn');
     if (!btn) return;
+
+    // Data Row Deletion (Data Cleaning)
+    if (btn.classList.contains('btn-delete-row')) {
+      const idx = parseInt(btn.dataset.index);
+      if (!isNaN(idx)) {
+        state.csvData.splice(idx, 1);
+        saveStateToLocal();
+        onMappingUpdate();
+        showToast('데이터 행이 삭제되었습니다.', 'success');
+      }
+      return;
+    }
 
     // 1. Sample Dataset Selection
     if (btn.classList.contains('sample-btn')) {
@@ -757,7 +871,7 @@ function bindEvents() {
       const plan = btn.getAttribute('data-plan');
       state.selectedPlan = plan;
       const priceDisp = document.getElementById('checkout-price-display');
-      if (priceDisp) priceDisp.textContent = plan === 'PRO' ? '$19.00 / 월' : '$49.00 / 월';
+      if (priceDisp) priceDisp.textContent = plan === 'PRO' ? '19,000원 / 월' : '49,000원 / 월';
       transitionPaywallStage('method');
       return;
     }
@@ -832,7 +946,20 @@ function bindEvents() {
   const chartTypeSelect = document.getElementById('chart-type-selector');
   if (chartTypeSelect) {
     chartTypeSelect.addEventListener('change', (e) => {
-      state.chartType = e.target.value;
+      state.mainChartType = e.target.value;
+      document.querySelectorAll('.chart-tab').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--text-muted)';
+        btn.style.border = '1px solid var(--card-border)';
+        if (btn.dataset.type === state.mainChartType) {
+          btn.classList.add('active');
+          btn.style.background = 'var(--primary-color)';
+          btn.style.color = 'white';
+          btn.style.border = 'none';
+        }
+      });
+      saveStateToLocal();
       triggerChartsRender();
     });
   }
@@ -927,18 +1054,20 @@ function bindEvents() {
   // Initialize Drag and Drop using SortableJS
   if (typeof window.Sortable !== 'undefined') {
     const grid = document.getElementById('dashboard-active-content');
-    if (grid) {
-      new window.Sortable(grid, {
-        animation: 150,
-        handle: '.btn-widget-drag',
-        ghostClass: 'sortable-ghost',
-        forceFallback: true, // Fix HTML5 drag issues with CSS Grid
-        fallbackClass: 'sortable-drag',
-        onEnd: function() {
-          showToast('위젯 레이아웃이 변경되었습니다.', 'info');
-        }
-      });
-    }
+    const chartsRow = document.getElementById('charts-row-container') || document.querySelector('.charts-row');
+    const sortableOpts = {
+      animation: 150,
+      handle: '.btn-widget-drag',
+      ghostClass: 'sortable-ghost',
+      forceFallback: true,
+      fallbackClass: 'sortable-drag',
+      onEnd: function() {
+        showToast('위젯 레이아웃이 변경되었습니다.', 'info');
+        saveStateToLocal();
+      }
+    };
+    if (grid) new window.Sortable(grid, sortableOpts);
+    if (chartsRow) new window.Sortable(chartsRow, sortableOpts);
   }
 }
 
@@ -1225,7 +1354,7 @@ function onMappingUpdate() {
 function triggerChartsRender() {
   if (!state.csvData || state.mappings.y.length === 0) return;
   const tokens = getThemeColorTokens(state.theme);
-  renderDashboardChartsDirect(state.csvData, state.mappings.x, state.mappings.y, state.theme, tokens, state.chartType);
+  renderDashboardChartsDirect(state.csvData, state.mappings.x, state.mappings.y, state.theme, tokens, state.mainChartType);
 }
 
 let tableCurrentPage = 1;
@@ -1242,7 +1371,8 @@ function renderDashboardTable() {
   tableHeaderRow.innerHTML = '';
   tableBodyRows.innerHTML = '';
 
-  state.columns.forEach(col => {
+  const displayColumns = state.columns.concat(['관리']);
+  displayColumns.forEach(col => {
     const th = document.createElement('th');
     th.textContent = col;
     tableHeaderRow.appendChild(th);
@@ -1303,8 +1433,15 @@ function renderDashboardTable() {
       td.textContent = row[col] !== undefined ? row[col] : '';
       tr.appendChild(td);
     });
+    
+    // Add "관리" column with trash icon
+    const tdAction = document.createElement('td');
+    tdAction.innerHTML = `<button class="btn-icon btn-delete-row" data-index="${startIdx + paginatedData.indexOf(row)}" title="데이터 삭제" style="background:transparent;border:none;color:var(--error-color, #ef4444);cursor:pointer;"><i data-lucide="trash-2"></i></button>`;
+    tr.appendChild(tdAction);
+
     tableBodyRows.appendChild(tr);
   });
+  if (window.lucide) window.lucide.createIcons();
 }
 
 function resetDashboard() {
@@ -2392,8 +2529,10 @@ document.addEventListener('DOMContentLoaded', () => {
   loadConfig();
   setupLayoutControls();
   
-  // If no saved dataset exists, auto-load standard revenue sample data for interactive wow factor!
-  if (!state.csvData) {
-    loadSample('revenue');
+  if (!loadStateFromLocal()) {
+    // If no saved dataset exists, auto-load standard revenue sample data for interactive wow factor!
+    if (!state.csvData) {
+      loadSample('revenue');
+    }
   }
 });

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -282,6 +282,9 @@
           <button class="btn btn-secondary" id="btn-pdf-print" style="padding: 6px 12px; font-size: 0.78rem; border-color: var(--secondary-color); color: var(--text-main); flex-shrink: 0;">
             <i data-lucide="file-text"></i> PDF 리포트
           </button>
+          <button class="btn btn-secondary" id="btn-reset-data" style="padding: 6px 12px; font-size: 0.78rem; border-color: var(--danger-color); color: var(--danger-color); margin-right: 8px;">
+            <i data-lucide="rotate-ccw"></i> 초기화
+          </button>
           <button class="btn btn-secondary" id="btn-export-csv" style="padding: 6px 12px; font-size: 0.78rem; border-color: var(--success-color); color: var(--text-main); flex-shrink: 0;">
             <i data-lucide="download"></i> 데이터 내보내기
           </button>
@@ -390,7 +393,7 @@
           </div>
 
           <!-- Charts Row (Grid Layout with layout controls) -->
-          <div class="charts-row">
+          <div class="charts-row" id="charts-row-container">
             
             <!-- Large Main Spline Chart Panel -->
             <div class="chart-panel-large dashboard-widget-panel" id="widget-line-container">
@@ -405,9 +408,16 @@
 
               <div class="panel-header">
                 <div>
-                  <h3 class="panel-title">
-                    <i data-lucide="line-chart" style="width: 18px; height: 18px; color: var(--primary-color);"></i>
-                    시계열 트렌드 및 기여도 시각화
+                  <h3 class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <i data-lucide="line-chart" style="width: 18px; height: 18px; color: var(--primary-color);"></i>
+                      시계열 트렌드 및 기여도 시각화
+                    </div>
+                    <div class="chart-type-tabs" style="display: flex; gap: 6px;">
+                      <button class="chart-tab active" data-type="line" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; background: var(--primary-color); color: white; border: none; cursor: pointer;">Line</button>
+                      <button class="chart-tab" data-type="bar" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; background: transparent; color: var(--text-muted); border: 1px solid var(--card-border); cursor: pointer;">Bar</button>
+                      <button class="chart-tab" data-type="radar" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; background: transparent; color: var(--text-muted); border: 1px solid var(--card-border); cursor: pointer;">Radar</button>
+                    </div>
                   </h3>
                   <span class="panel-subtitle">수정 가능한 매핑 축과 다중 지표에 따른 면적 시각화</span>
                 </div>
