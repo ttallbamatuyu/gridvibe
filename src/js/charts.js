@@ -153,20 +153,19 @@ function renderDonutChart(labels, values, tokens) {
 
   const ctx = canvas.getContext('2d');
   
-  const hexToRgb = (hex) => {
-    const h = hex.startsWith('#') ? hex.slice(1) : hex;
-    if (h.length !== 6) return '100, 100, 100';
-    return `${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)}`;
-  };
-  const primaryRgb = hexToRgb(tokens.primary);
-  const secondaryRgb = hexToRgb(tokens.secondary);
-
-  const colorPalette = labels.map((_, i) => {
-    const isPrimary = i % 2 === 0;
-    const cycle = Math.floor(i / 2) % 4;
-    const alpha = 1.0 - (cycle * 0.15);
-    return isPrimary ? `rgba(${primaryRgb}, ${alpha})` : `rgba(${secondaryRgb}, ${alpha})`;
-  });
+  const basePalette = [
+    tokens.primary,
+    tokens.secondary,
+    '#3b82f6',
+    '#f59e0b',
+    '#10b981',
+    '#8b5cf6',
+    '#ec4899',
+    '#14b8a6',
+    '#f43f5e',
+    '#84cc16'
+  ];
+  const colorPalette = labels.map((_, i) => basePalette[i % basePalette.length]);
 
   const config = {
     type: 'doughnut',
