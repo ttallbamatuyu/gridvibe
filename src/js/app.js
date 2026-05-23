@@ -2570,9 +2570,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setupLayoutControls();
   
   if (!loadStateFromLocal()) {
-    // If no saved dataset exists, auto-load standard revenue sample data for interactive wow factor!
-    if (!state.csvData) {
-      loadSample('revenue');
-    }
+    // Do nothing. Show empty state per user request.
   }
 });
