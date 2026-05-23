@@ -1281,16 +1281,15 @@ function populateMappingSelectors(columns) {
       wrapper.className = 'checkbox-item';
       
       const chk = document.createElement('input');
-      chk.type = 'checkbox';
+      chk.type = 'radio';
+      chk.name = 'mapping-y-radio';
       chk.value = col;
-      chk.className = 'mapping-y-checkbox';
+      chk.className = 'mapping-y-checkbox'; // keep the class for existing querySelectorAll
       
-      // Auto-check first few numeric columns
+      // Auto-check first numeric column
       if (!checkedAny) {
         chk.checked = true;
         checkedAny = true;
-      } else if (idx <= 3) {
-        chk.checked = true;
       }
 
       chk.addEventListener('change', () => {
