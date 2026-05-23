@@ -940,6 +940,25 @@ function bindEvents() {
   }
 }
 
+function setupWidgetToggle(checkboxId, stateKey, containerId) {
+  const checkbox = document.getElementById(checkboxId);
+  const container = document.getElementById(containerId);
+  if (checkbox && container) {
+    checkbox.addEventListener('change', (e) => {
+      state.widgets[stateKey] = e.target.checked;
+      if (e.target.checked) {
+        container.style.display = '';
+      } else {
+        container.style.display = 'none';
+      }
+    });
+    // Set initial state
+    if (!state.widgets[stateKey]) {
+      container.style.display = 'none';
+    }
+  }
+}
+
 /**
  * Paywall Modal helpers
  */
