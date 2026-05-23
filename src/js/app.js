@@ -1225,17 +1225,17 @@ function populateMappingSelectors(columns) {
   selectX.innerHTML = '';
   containerY.innerHTML = '';
 
-  // 1. Populate X Axis options
-  columns.forEach(col => {
-    const optX = document.createElement('option');
-    optX.value = col;
-    optX.textContent = col;
-    selectX.appendChild(optX);
-  });
+  // 1. Populate X Axis grouping options
+  selectX.innerHTML = `
+    <option value="raw">원본 보기 (Raw)</option>
+    <option value="day">일간 보기 (Daily)</option>
+    <option value="week">주간 보기 (Weekly)</option>
+    <option value="month">월간 보기 (Monthly)</option>
+  `;
   selectX.disabled = false;
   if (chartTypeSelect) chartTypeSelect.disabled = false;
 
-  // 2. Identify logical default for X-axis (e.g. date, week, etc.)
+  // 2. Identify logical default date column for X-axis
   let defaultX = columns[0];
   const dateKeywords = ['날짜', 'month', 'date', 'day', '주간', '캠페인', 'week', 'year', '년도', '월'];
   for (const col of columns) {
@@ -1244,8 +1244,9 @@ function populateMappingSelectors(columns) {
       break;
     }
   }
-  selectX.value = defaultX;
-  state.mappings.x = defaultX;
+  state.dateColumn = defaultX;
+  state.mappings.x = 'raw';
+  selectX.value = 'raw';
 
   // 3. Populate Y Axis checkboxes (excluding defaultX)
   let checkedAny = false;
@@ -1305,20 +1306,63 @@ function onMappingUpdate() {
   let count = 0;
   let maxPeak = -Infinity;
 
-  // Aggregate metrics over ALL selected Y datasets!
-  state.csvData.forEach(row => {
+  const grouping = state.mappings.x || 'raw';
+  const dateCol = state.dateColumn;
+  let processedData = [];
+
+  if (grouping === 'raw' || !dateCol) {
+    processedData = [...state.csvData];
+  } else {
+    const groups = {};
+    state.csvData.forEach(row => {
+      let rawVal = row[dateCol];
+      let groupKey = String(rawVal !== undefined && rawVal !== null ? rawVal : '');
+      
+      if (rawVal) {
+        const d = new Date(rawVal);
+        if (!isNaN(d.getTime())) {
+          if (grouping === 'day') {
+            groupKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          } else if (grouping === 'month') {
+            groupKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}월`;
+          } else if (grouping === 'week') {
+            const firstDayOfYear = new Date(d.getFullYear(), 0, 1);
+            const pastDaysOfYear = (d - firstDayOfYear) / 86400000;
+            const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+            groupKey = `${d.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
+          }
+        }
+      }
+      
+      if (!groups[groupKey]) {
+        groups[groupKey] = { [dateCol]: groupKey };
+        state.columns.forEach(c => {
+          if (c !== dateCol) groups[groupKey][c] = row[c];
+        });
+        yCols.forEach(y => groups[groupKey][y] = 0);
+      }
+      
+      yCols.forEach(yCol => {
+        let val = row[yCol];
+        if (typeof val === 'string') val = parseFloat(val.replace(/[\$,%,원,건,\s]/g, ''));
+        if (!isNaN(val)) groups[groupKey][yCol] += val;
+      });
+    });
+    
+    processedData = Object.values(groups);
+    processedData.sort((a, b) => String(a[dateCol]).localeCompare(String(b[dateCol])));
+  }
+  
+  state.processedData = processedData;
+
+  processedData.forEach(row => {
     yCols.forEach(yCol => {
-      let rawVal = row[yCol];
-      if (rawVal !== undefined && rawVal !== null) {
-        if (typeof rawVal === 'string') {
-          rawVal = parseFloat(rawVal.replace(/[\$,%,원,건,\s]/g, ''));
-        }
-        const val = parseFloat(rawVal);
-        if (!isNaN(val)) {
-          totalSum += val;
-          count++;
-          if (val > maxPeak) maxPeak = val;
-        }
+      let val = row[yCol];
+      if (typeof val === 'string') val = parseFloat(val.replace(/[\$,%,원,건,\s]/g, ''));
+      if (!isNaN(val)) {
+        totalSum += val;
+        count++;
+        if (val > maxPeak) maxPeak = val;
       }
     });
   });
@@ -1340,7 +1384,7 @@ function onMappingUpdate() {
   document.getElementById('kpi-2-label').textContent = `${mainYTitle} 평균`;
   document.getElementById('kpi-avg-val').textContent = formatNumber(avg);
   
-  document.getElementById('kpi-count-val').textContent = state.csvData.length.toLocaleString();
+  document.getElementById('kpi-count-val').textContent = state.processedData.length.toLocaleString();
   
   document.getElementById('kpi-4-label').textContent = `${mainYTitle} 최고점`;
   document.getElementById('kpi-max-val').textContent = formatNumber(maxPeak);
@@ -1350,9 +1394,9 @@ function onMappingUpdate() {
 }
 
 function triggerChartsRender() {
-  if (!state.csvData || state.mappings.y.length === 0) return;
+  if (!state.processedData || state.mappings.y.length === 0) return;
   const tokens = getThemeColorTokens(state.theme);
-  renderDashboardChartsDirect(state.csvData, state.mappings.x, state.mappings.y, state.theme, tokens, state.mainChartType);
+  renderDashboardChartsDirect(state.processedData, state.dateColumn, state.mappings.y, state.theme, tokens, state.mainChartType);
 }
 
 let tableCurrentPage = 1;
@@ -1380,13 +1424,13 @@ function renderDashboardTable() {
   const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
   if (query) {
-    filteredTableData = state.csvData.filter(row => {
+    filteredTableData = state.processedData.filter(row => {
       return Object.values(row).some(val => 
         String(val).toLowerCase().includes(query)
       );
     });
   } else {
-    filteredTableData = [...state.csvData];
+    filteredTableData = [...state.processedData];
   }
 
   totalCountEl.textContent = filteredTableData.length;
@@ -1420,7 +1464,7 @@ function renderDashboardTable() {
     state.columns.forEach(col => {
       const td = document.createElement('td');
       
-      if (col === state.mappings.x) {
+      if (col === state.dateColumn) {
         td.style.fontWeight = '600';
         td.style.color = tokens.primary;
       } else if (state.mappings.y.includes(col)) {
