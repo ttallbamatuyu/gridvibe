@@ -410,7 +410,10 @@
                       <i data-lucide="line-chart" style="width: 18px; height: 18px; color: var(--primary-color);"></i>
                       시계열 트렌드 및 기여도 시각화
                     </div>
-                    <div class="chart-type-tabs" style="display: flex; gap: 6px;">
+                    <div class="chart-type-tabs" style="display: flex; gap: 6px; align-items: center;">
+                      <button class="btn btn-icon" id="btn-export-chart" title="차트 이미지 다운로드 (PNG)" style="padding: 4px; background: transparent; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="camera" style="width: 16px; height: 16px;"></i>
+                      </button>
                       <button class="chart-tab active" data-type="line" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; background: var(--primary-color); color: white; border: none; cursor: pointer;">Line</button>
                       <button class="chart-tab" data-type="bar" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; background: transparent; color: var(--text-muted); border: 1px solid var(--card-border); cursor: pointer;">Bar</button>
                       <button class="chart-tab" data-type="radar" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; background: transparent; color: var(--text-muted); border: 1px solid var(--card-border); cursor: pointer;">Radar</button>

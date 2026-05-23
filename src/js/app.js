@@ -812,6 +812,10 @@ function bindEvents() {
       exportDataToCSV();
       return;
     }
+    if (btn.id === 'btn-export-chart') {
+      exportChartToPNG();
+      return;
+    }
     if (btn.id === 'btn-pdf-print') {
       window.print();
       return;
@@ -2112,7 +2116,8 @@ h1, h2, h3 {
 }
 
 function exportDataToCSV() {
-  if (!state.csvData || state.csvData.length === 0) {
+  const targetData = state.processedData || state.csvData;
+  if (!targetData || targetData.length === 0) {
     showToast('내보낼 데이터가 없습니다.', 'error');
     return;
   }
@@ -2121,8 +2126,8 @@ function exportDataToCSV() {
     return;
   }
   
-  // Use filteredTableData if activeFilter is applied, else use state.csvData
-  const dataToExport = state.activeFilter ? filteredTableData : state.csvData;
+  // Use filteredTableData if activeFilter is applied, else use processedData
+  const dataToExport = state.activeFilter ? filteredTableData : targetData;
   const csvStr = window.Papa.unparse(dataToExport);
   
   const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvStr], { type: 'text/csv;charset=utf-8;' });
@@ -2136,6 +2141,34 @@ function exportDataToCSV() {
   URL.revokeObjectURL(url);
   
   showToast('CSV 다운로드가 시작되었습니다.', 'success');
+}
+
+function exportChartToPNG() {
+  const canvas = document.getElementById('mainLineChart');
+  if (!canvas || !activeCharts.main) {
+    showToast('차트가 렌더링되지 않았습니다.', 'error');
+    return;
+  }
+  
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  const ctx = tempCanvas.getContext('2d');
+  
+  const tokens = getThemeColorTokens(state.theme);
+  ctx.fillStyle = tokens.panelBg;
+  ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+  
+  ctx.drawImage(canvas, 0, 0);
+  
+  const link = document.createElement('a');
+  link.download = `dashboard_chart_${new Date().toISOString().slice(0, 10)}.png`;
+  link.href = tempCanvas.toDataURL('image/png');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showToast('차트 이미지가 저장되었습니다.', 'success');
 }
 
 function exportDashboardHTML() {
