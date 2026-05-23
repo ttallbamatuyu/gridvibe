@@ -926,7 +926,7 @@ function bindEvents() {
 
   // Initialize Drag and Drop using SortableJS
   if (typeof window.Sortable !== 'undefined') {
-    const grid = document.querySelector('.dashboard-grid');
+    const grid = document.getElementById('dashboard-active-content');
     if (grid) {
       new window.Sortable(grid, {
         animation: 150,
