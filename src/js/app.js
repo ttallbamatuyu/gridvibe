@@ -428,6 +428,23 @@ function renderDashboardChartsDirect(data, xCol, yCols, theme, tokens, chartType
     actualType = 'bar'; // Horizontal is bar chart with indexAxis option
   }
 
+  // Dual Y-axis logic for disparate metric scales
+  let useSecondaryAxis = false;
+  if (actualType !== 'radar' && datasets.length > 1) {
+    const dsMaxValues = datasets.map(ds => Math.max(0, ...ds.data.map(Math.abs)));
+    const overallMax = Math.max(0, ...dsMaxValues);
+
+    datasets.forEach((ds, i) => {
+      // If a dataset's max is significantly smaller (e.g. less than 1/10th) than the overall max, use a secondary axis.
+      if (dsMaxValues[i] > 0 && dsMaxValues[i] <= overallMax / 10 && overallMax > 10) {
+        ds.yAxisID = 'y1';
+        useSecondaryAxis = true;
+      } else {
+        ds.yAxisID = 'y';
+      }
+    });
+  }
+
   const config = {
     type: actualType,
     data: {
@@ -466,6 +483,9 @@ function renderDashboardChartsDirect(data, xCol, yCols, theme, tokens, chartType
           ticks: { color: tokens.textMuted, font: { family: 'Inter', size: 10 } }
         },
         y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
           grid: { color: tokens.gridLine, drawBorder: false },
           ticks: { color: tokens.textMuted, font: { family: 'Inter', size: 10 } }
         }
