@@ -1,4 +1,4 @@
-﻿/**
+/**
  * GridVibe - Single Self-Contained Premium Application Controller
  * Robust, CORS-free architecture fully compatible with local file:// protocol.
  * Integrates 5 Major Commercial Upgrades:
@@ -930,8 +930,10 @@ function bindEvents() {
     if (grid) {
       new window.Sortable(grid, {
         animation: 150,
-        handle: '.panel-title, .kpi-header',
+        handle: '.btn-widget-drag',
         ghostClass: 'sortable-ghost',
+        forceFallback: true, // Fix HTML5 drag issues with CSS Grid
+        fallbackClass: 'sortable-drag',
         onEnd: function() {
           showToast('위젯 레이아웃이 변경되었습니다.', 'info');
         }

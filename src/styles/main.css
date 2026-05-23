@@ -802,6 +802,12 @@ input:checked + .slider:before {
   background: var(--primary-glow) !important;
 }
 
+.sortable-drag {
+  opacity: 0.9 !important;
+  cursor: grabbing !important;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.4) !important;
+}
+
 .widget-control-overlay {
   position: absolute;
   top: 14px;
