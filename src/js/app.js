@@ -1,4 +1,4 @@
-/**
+﻿/**
  * GridVibe - Single Self-Contained Premium Application Controller
  * Robust, CORS-free architecture fully compatible with local file:// protocol.
  * Integrates 5 Major Commercial Upgrades:
@@ -819,10 +819,6 @@ function bindEvents() {
       return;
     }
     if (btn.id === 'btn-export-html') {
-      if (!state.isPro) {
-        openPaywallModal();
-        return;
-      }
       exportDashboardHTML();
       return;
     }
@@ -1041,10 +1037,6 @@ function bindEvents() {
   const logoFileInput = document.getElementById('logo-file-input');
   if (logoTrigger && logoFileInput) {
     logoTrigger.addEventListener('click', () => {
-      if (!state.isPro) {
-        openPaywallModal();
-        return;
-      }
       logoFileInput.click();
     });
 
@@ -1160,53 +1152,6 @@ function setupWidgetToggle(checkboxId, stateKey, containerId) {
       container.style.display = 'none';
     }
   }
-}
-
-/**
- * Paywall Modal helpers
- */
-function openPaywallModal() {
-  const overlay = document.getElementById('paywall-modal-overlay');
-  overlay.classList.add('active');
-  transitionPaywallStage('plan');
-}
-
-function closePaywallModal() {
-  const overlay = document.getElementById('paywall-modal-overlay');
-  overlay.classList.remove('active');
-}
-
-function transitionPaywallStage(stage) {
-  state.checkoutStage = stage;
-  
-  // Hide all stages
-  const stages = document.querySelectorAll('.paywall-stage');
-  stages.forEach(s => s.classList.add('hidden'));
-  
-  // Show active stage
-  const activeStage = document.getElementById(`checkout-stage-${stage}`);
-  if (activeStage) activeStage.classList.remove('hidden');
-}
-
-function updatePinDisplay() {
-  for (let i = 1; i <= 6; i++) {
-    const dot = document.getElementById(`pin-${i}`);
-    if (dot) {
-      if (i <= state.checkoutPin.length) {
-        dot.classList.add('filled');
-      } else {
-        dot.classList.remove('filled');
-      }
-    }
-  }
-}
-
-function simulateCheckoutSuccess() {
-  showLoader('모의 토스페이망 안전 거래 결제 승인 중...');
-  setTimeout(() => {
-    hideLoader();
-    transitionPaywallStage('success');
-  }, 1200);
 }
 
 /**
@@ -2752,45 +2697,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   bindEvents();
   setupLayoutControls();
-
-  // Toss Payments Redirect Handling
-  const urlParams = new URLSearchParams(window.location.search);
-  const tossStatus = urlParams.get('toss');
-  if (tossStatus === 'success') {
-    const paymentKey = urlParams.get('paymentKey');
-    const orderId = urlParams.get('orderId');
-    const amount = urlParams.get('amount');
-    const uid = urlParams.get('uid');
-    
-    showLoader();
-    const loadingMsg = document.getElementById('loading-message');
-    if (loadingMsg) loadingMsg.textContent = '결제 승인 중입니다. 잠시만 기다려주세요...';
-    
-    fetch('https://us-central1-gridvibe-537aa.cloudfunctions.net/verifyTossPayment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paymentKey, orderId, amount, uid })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert('결제가 완벽하게 처리되었습니다. PRO 멤버십을 환영합니다!');
-        window.location.href = window.location.origin + window.location.pathname; // Clean URL
-      } else {
-        alert('결제 승인 실패: ' + data.error);
-        hideLoader();
-      }
-    })
-    .catch(err => {
-      alert('네트워크 오류가 발생했습니다.');
-      hideLoader();
-    });
-    return; // Stop further execution until redirect
-  } else if (tossStatus === 'fail') {
-    alert('결제 중 오류가 발생했습니다.');
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-  
   // Firebase Auth State Listener
   auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -2820,3 +2726,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
