@@ -2813,5 +2813,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Empty state
       }
     }
+    
+    // Force re-render of all icons after auth state is resolved
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
   });
 });
